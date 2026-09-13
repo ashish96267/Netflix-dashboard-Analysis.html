@@ -1,0 +1,1609 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netflix Analytics Dashboard</title>
+
+  <!-- ECharts visualization library -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+  <style>
+    :root {
+      --netflix-red: #E50914;
+      --bg: #0b0b0b;
+      --card: #161616;
+      --border: rgba(255,255,255,0.08);
+      --text: #f5f5f5;
+      --muted: #b3b3b3;
+      --shadow: 0 10px 30px rgba(0,0,0,0.30);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(229,9,20,0.16), transparent 25%),
+        linear-gradient(180deg, #070707, #101010);
+      color: var(--text);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 26px;
+      background: rgba(0,0,0,0.88);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 52px;
+      height: 74px;
+      flex: 0 0 auto;
+      filter: drop-shadow(0 0 16px rgba(229,9,20,0.35));
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0.4px;
+      color: #fff;
+    }
+
+    .title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid rgba(229,9,20,0.35);
+      background: linear-gradient(135deg, rgba(229,9,20,0.20), rgba(229,9,20,0.08));
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    button:hover {
+      background: rgba(229,9,20,0.30);
+      transform: translateY(-1px);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      padding: 18px 26px 8px;
+    }
+
+    .filter-item label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+    }
+
+    select,
+    input {
+      width: 100%;
+      background: #101010;
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 12px;
+      outline: none;
+      box-shadow: var(--shadow);
+    }
+
+    select:focus,
+    input:focus {
+      border-color: rgba(229,9,20,0.65);
+      box-shadow: 0 0 0 3px rgba(229,9,20,0.12);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      padding: 16px 26px;
+    }
+
+    .kpi {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px 16px;
+      min-height: 116px;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-size: 31px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .kpi-sub {
+      margin-top: 10px;
+      color: #ff9aa0;
+      font-size: 12px;
+    }
+
+    .section-title {
+      margin: 8px 26px 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .section-subtitle {
+      margin: 4px 26px 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      padding: 0 26px 26px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .card .note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .chart-box {
+      width: 100%;
+      height: 280px;
+    }
+
+    .chart-box.tall {
+      height: 320px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 500px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #0d0d0d;
+      color: #ffb3b7;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      z-index: 2;
+    }
+
+    td {
+      padding: 11px 10px;
+      font-size: 13px;
+      color: #ececec;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: top;
+    }
+
+    tbody tr:hover td {
+      background: rgba(229,9,20,0.06);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin: 1px;
+      background: rgba(229,9,20,0.12);
+      border: 1px solid rgba(229,9,20,0.22);
+      color: #ffb0b5;
+    }
+
+    .empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 220px;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.02);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .footer-note {
+      padding: 0 26px 28px;
+      color: #8f8f8f;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1200px) {
+      .span-4,
+      .span-6,
+      .span-8 {
+        grid-column: span 12;
+      }
+
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .actions {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <!-- Replace with an official Netflix logo image if needed -->
+      <svg class="logo" viewBox="0 0 100 180" role="img" aria-label="Netflix style logo">
+        <rect x="0" y="0" width="100" height="180" rx="12" fill="#000000"></rect>
+        <rect x="18" y="24" width="18" height="132" fill="#E50914"></rect>
+        <rect x="64" y="24" width="18" height="132" fill="#E50914"></rect>
+        <polygon points="18,24 36,24 82,156 64,156" fill="#E50914"></polygon>
+      </svg>
+
+      <div class="title">
+        <h1>Netflix Analytics Dashboard</h1>
+        <p>Interactive movies and TV shows analysis using ECharts with dropdown filters and advanced visuals.</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="resetBtn">Reset Filters</button>
+      <button id="exportBtn">Export Filtered CSV</button>
+    </div>
+  </header>
+
+  <section class="filters">
+    <div class="filter-item">
+      <label for="typeFilter">Content Type</label>
+      <select id="typeFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="genreFilter">Genre</label>
+      <select id="genreFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="countryFilter">Country</label>
+      <select id="countryFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="ratingFilter">Rating</label>
+      <select id="ratingFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="directorFilter">Director</label>
+      <select id="directorFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="releaseYearFilter">Release Year</label>
+      <select id="releaseYearFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="addedYearFilter">Year Added</label>
+      <select id="addedYearFilter"></select>
+    </div>
+
+    <div class="filter-item">
+      <label for="searchFilter">Search</label>
+      <input id="searchFilter" type="text" placeholder="Search title, genre, director..." />
+    </div>
+  </section>
+
+  <section class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">Total Titles</div>
+      <div class="kpi-value" id="kpiTotal">0</div>
+      <div class="kpi-sub">Filtered Netflix titles</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Movies</div>
+      <div class="kpi-value" id="kpiMovies">0</div>
+      <div class="kpi-sub">Movie content count</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">TV Shows</div>
+      <div class="kpi-value" id="kpiTVShows">0</div>
+      <div class="kpi-sub">TV show content count</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Unique Directors</div>
+      <div class="kpi-value" id="kpiDirectors">0</div>
+      <div class="kpi-sub">Directors in filtered data</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Unique Countries</div>
+      <div class="kpi-value" id="kpiCountries">0</div>
+      <div class="kpi-sub">Production countries</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-label">Avg Movie Runtime</div>
+      <div class="kpi-value" id="kpiAvgRuntime">0</div>
+      <div class="kpi-sub">Minutes, filtered movies only</div>
+    </div>
+  </section>
+
+  <div class="section-title">Advanced Analytics</div>
+  <div class="section-subtitle">
+    All charts update automatically when dropdown filters are changed.
+  </div>
+
+  <main class="grid">
+
+    <section class="card span-8">
+      <h3>Titles Added by Month</h3>
+      <div class="note">Netflix catalog addition trend over time.</div>
+      <div id="monthlyChart" class="chart-box"></div>
+    </section>
+
+    <section class="card span-4">
+      <h3>Rating Distribution</h3>
+      <div class="note">Content rating mix for filtered titles.</div>
+      <div id="ratingChart" class="chart-box"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Release Year by Content Type</h3>
+      <div class="note">Movie vs TV Show release-volume comparison.</div>
+      <div id="releaseYearChart" class="chart-box"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Top Genres</h3>
+      <div class="note">One title can appear in multiple genres.</div>
+      <div id="genresChart" class="chart-box tall"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Top Countries</h3>
+      <div class="note">Countries with the most filtered content.</div>
+      <div id="countriesChart" class="chart-box tall"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Top Directors</h3>
+      <div class="note">Directors with the most filtered titles.</div>
+      <div id="directorsChart" class="chart-box tall"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Genre Mix by Type</h3>
+      <div class="note">Top genres split between Movies and TV Shows.</div>
+      <div id="genreTypeChart" class="chart-box tall"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Genre × Rating Heatmap</h3>
+      <div class="note">Advanced matrix view showing genre and rating concentration.</div>
+      <div id="heatmapChart" class="chart-box tall"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>Movie Runtime Scatter Analysis</h3>
+      <div class="note">Release year vs runtime for movies only.</div>
+      <div id="scatterChart" class="chart-box"></div>
+    </section>
+
+    <section class="card span-6">
+      <h3>TV Show Seasons Distribution</h3>
+      <div class="note">Season-count pattern for TV shows.</div>
+      <div id="seasonsChart" class="chart-box"></div>
+    </section>
+
+    <section class="card span-12">
+      <h3>Filtered Title Details <span id="tableCount" style="color:#b3b3b3; font-weight:500;"></span></h3>
+      <div class="note">Shows the first 80 filtered records for quick inspection.</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Show ID</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Release Year</th>
+              <th>Rating</th>
+              <th>Duration</th>
+              <th>Date Added</th>
+              <th>Genres</th>
+              <th>Countries</th>
+              <th>Directors</th>
+            </tr>
+          </thead>
+          <tbody id="detailBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="footer-note">
+    <strong>Note:</strong> This dashboard currently uses built-in sample data so it works immediately.
+    Replace <code>rawData</code> with your real Netflix data exported from CSV, database, API, or star-schema SQL query.
+  </div>
+
+  <script>
+    /*************************************************************
+     * SAMPLE DATA GENERATOR
+     * Replace this with real data later.
+     *************************************************************/
+    function mulberry32(seed) {
+      return function () {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateSampleData() {
+      const rand = mulberry32(20260913);
+
+      const genresPool = [
+        "Dramas", "Comedies", "Action & Adventure", "Thrillers",
+        "Documentaries", "International", "Kids & Family", "Horror",
+        "Romance", "Sci-Fi & Fantasy", "Crime", "Reality TV"
+      ];
+
+      const countriesPool = [
+        "United States", "United Kingdom", "India", "South Korea",
+        "Japan", "Canada", "France", "Germany", "Brazil",
+        "Mexico", "Spain", "Turkey"
+      ];
+
+      const directorsPool = [
+        "Ava Sharma", "James Lee", "Maria Gonzalez", "Kenji Nakamura",
+        "Lena Weber", "Rahul Kapoor", "Sophie Turner", "Miguel Santos",
+        "Emma Clarke", "David Kim", "Lucas Martin", "Priya Patel",
+        "Hiroshi Tanaka", "Isabella Rossi", "Omar Farouk"
+      ];
+
+      const castPool = [
+        "Alex Morgan", "Nina Rodriguez", "Chris Evans", "Meera Nair",
+        "Tom Becker", "Yuki Sato", "Sofia Martinez", "Arjun Mehta",
+        "Laura Smith", "Daniel Osei", "Chloe Dubois", "Mateo Lopez",
+        "Hana Kim", "Ryan Carter", "Ananya Rao"
+      ];
+
+      const ratingsPool = ["TV-MA", "TV-14", "PG-13", "R", "TV-PG", "PG", "NR"];
+
+      const titleAdjectives = [
+        "Dark", "Silent", "Midnight", "Golden", "Lost",
+        "Hidden", "Crimson", "Wild", "Eternal", "Shadow",
+        "Neon", "Royal", "Broken", "Secret"
+      ];
+
+      const titleNouns = [
+        "Kingdom", "Protocol", "Hearts", "Empire", "Journeys",
+        "Secrets", "Ghosts", "City", "Legacy", "Storm",
+        "Files", "Games", "Island", "Chronicles"
+      ];
+
+      function pick(arr) {
+        return arr[Math.floor(rand() * arr.length)];
+      }
+
+      function pickMany(arr, min, max) {
+        const count = min + Math.floor(rand() * (max - min + 1));
+        const copy = [...arr];
+        const output = [];
+
+        for (let i = 0; i < count && copy.length; i++) {
+          const idx = Math.floor(rand() * copy.length);
+          output.push(copy.splice(idx, 1)[0]);
+        }
+
+        return output;
+      }
+
+      const data = [];
+
+      for (let i = 1; i <= 340; i++) {
+        const type = rand() > 0.42 ? "Movie" : "TV Show";
+        const release_year = 2010 + Math.floor(rand() * 15);
+        const added_year = Math.min(2026, release_year + Math.floor(rand() * 6));
+        const added_month = 1 + Math.floor(rand() * 12);
+        const added_day = 1 + Math.floor(rand() * 28);
+
+        const date_added = `${added_year}-${String(added_month).padStart(2, "0")}-${String(added_day).padStart(2, "0")}`;
+        const rating = pick(ratingsPool);
+
+        const duration_minutes = type === "Movie"
+          ? 75 + Math.floor(rand() * 105)
+          : null;
+
+        const season_count = type === "TV Show"
+          ? 1 + Math.floor(rand() * 6)
+          : null;
+
+        const duration = type === "Movie"
+          ? `${duration_minutes} min`
+          : `${season_count} Season${season_count > 1 ? "s" : ""}`;
+
+        data.push({
+          show_id: `s${i}`,
+          type,
+          title: `${pick(titleAdjectives)} ${pick(titleNouns)} ${i}`,
+          release_year,
+          rating,
+          duration,
+          duration_minutes,
+          season_count,
+          date_added,
+          genres: pickMany(genresPool, 1, 3),
+          countries: pickMany(countriesPool, 1, 3),
+          directors: pickMany(directorsPool, 1, 2),
+          cast: pickMany(castPool, 2, 5),
+          description: "Sample description generated for dashboard demonstration."
+        });
+      }
+
+      return data;
+    }
+
+    const rawData = generateSampleData();
+
+    const state = {
+      type: "All",
+      genre: "All",
+      country: "All",
+      rating: "All",
+      director: "All",
+      releaseYear: "All",
+      addedYear: "All",
+      search: ""
+    };
+
+    let activeCharts = [];
+
+    const palette = [
+      "#E50914", "#F5C518", "#4E79A7", "#59A14F", "#F28E2B",
+      "#B07AA1", "#76B7B2", "#EDC948", "#FF9DA7", "#9C755F",
+      "#BAB0AC", "#86BBD6"
+    ];
+
+    function getColor(index) {
+      return palette[index % palette.length];
+    }
+
+    /*************************************************************
+     * Utility functions
+     *************************************************************/
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function csvEscape(value) {
+      if (value === null || value === undefined) return "";
+      const str = String(value);
+      return /[",\n]/.test(str)
+        ? '"' + str.replace(/"/g, '""') + '"'
+        : str;
+    }
+
+    function increment(map, key) {
+      if (key === null || key === undefined || key === "") return;
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+
+    function toEntries(map) {
+      return Array.from(map.entries()).sort((a, b) => {
+        return b[1] - a[1] || String(a[0]).localeCompare(String(b[0]));
+      });
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+    }
+
+    function topFlatten(data, field, n = 10) {
+      const map = new Map();
+
+      data.forEach(row => {
+        (row[field] || []).forEach(value => increment(map, value || "Unknown"));
+      });
+
+      return toEntries(map).slice(0, n);
+    }
+
+    function topScalar(data, field, n = 10) {
+      const map = new Map();
+
+      data.forEach(row => {
+        increment(map, row[field] ?? "Unknown");
+      });
+
+      return toEntries(map).slice(0, n);
+    }
+
+    function fillSelect(id, values, allLabel) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const stateKey = id.replace("Filter", "");
+      const currentValue = state[stateKey] || "All";
+
+      el.innerHTML = `
+        <option value="All">${escapeHtml(allLabel)}</option>
+        ${values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("")}
+      `;
+
+      if (values.includes(currentValue)) {
+        el.value = currentValue;
+      } else {
+        el.value = "All";
+        state[stateKey] = "All";
+      }
+    }
+
+    function getFilteredData() {
+      return rawData.filter(d => {
+        if (state.type !== "All" && d.type !== state.type) return false;
+        if (state.genre !== "All" && !(d.genres || []).includes(state.genre)) return false;
+        if (state.country !== "All" && !(d.countries || []).includes(state.country)) return false;
+        if (state.rating !== "All" && d.rating !== state.rating) return false;
+        if (state.director !== "All" && !(d.directors || []).includes(state.director)) return false;
+        if (state.releaseYear !== "All" && String(d.release_year ?? "") !== state.releaseYear) return false;
+        if (state.addedYear !== "All" && String(d.date_added || "").slice(0, 4) !== state.addedYear) return false;
+
+        if (state.search) {
+          const haystack = [
+            d.title,
+            ...(d.genres || []),
+            ...(d.directors || []),
+            ...(d.cast || []),
+            ...(d.countries || [])
+          ].join(" ").toLowerCase();
+
+          if (!haystack.includes(state.search.toLowerCase())) return false;
+        }
+
+        return true;
+      });
+    }
+
+    function populateFilters() {
+      fillSelect("typeFilter", uniqueSorted(rawData.map(d => d.type)), "All Types");
+      fillSelect("genreFilter", uniqueSorted(rawData.flatMap(d => d.genres || [])), "All Genres");
+      fillSelect("countryFilter", uniqueSorted(rawData.flatMap(d => d.countries || [])), "All Countries");
+      fillSelect("ratingFilter", uniqueSorted(rawData.map(d => d.rating)), "All Ratings");
+      fillSelect("directorFilter", uniqueSorted(rawData.flatMap(d => d.directors || [])), "All Directors");
+
+      const releaseYears = [...new Set(rawData.map(d => d.release_year).filter(Boolean))]
+        .sort((a, b) => b - a)
+        .map(String);
+
+      const addedYears = [...new Set(rawData.map(d => String(d.date_added || "").slice(0, 4)).filter(Boolean))]
+        .sort((a, b) => b.localeCompare(a));
+
+      fillSelect("releaseYearFilter", releaseYears, "All Release Years");
+      fillSelect("addedYearFilter", addedYears, "All Added Years");
+    }
+
+    /*************************************************************
+     * KPI rendering
+     *************************************************************/
+    function renderKPIs(filtered) {
+      const total = filtered.length;
+      const movies = filtered.filter(d => d.type === "Movie").length;
+      const tvShows = filtered.filter(d => d.type === "TV Show").length;
+
+      const uniqueDirectors = new Set(filtered.flatMap(d => d.directors || [])).size;
+      const uniqueCountries = new Set(filtered.flatMap(d => d.countries || [])).size;
+
+      const moviesWithRuntime = filtered.filter(d => d.type === "Movie" && d.duration_minutes);
+      const avgRuntime = moviesWithRuntime.length
+        ? Math.round(moviesWithRuntime.reduce((sum, d) => sum + d.duration_minutes, 0) / moviesWithRuntime.length)
+        : 0;
+
+      document.getElementById("kpiTotal").textContent = total.toLocaleString();
+      document.getElementById("kpiMovies").textContent = movies.toLocaleString();
+      document.getElementById("kpiTVShows").textContent = tvShows.toLocaleString();
+      document.getElementById("kpiDirectors").textContent = uniqueDirectors.toLocaleString();
+      document.getElementById("kpiCountries").textContent = uniqueCountries.toLocaleString();
+      document.getElementById("kpiAvgRuntime").textContent = avgRuntime.toLocaleString();
+    }
+
+    /*************************************************************
+     * ECharts rendering
+     *************************************************************/
+    function renderEChart(id, option) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const existing = echarts.getInstanceByDom(el);
+      if (existing) existing.dispose();
+
+      const chart = echarts.init(el, "dark");
+      chart.setOption({
+        backgroundColor: "transparent",
+        textStyle: {
+          fontFamily: "Segoe UI, Arial, sans-serif"
+        },
+        ...option
+      });
+
+      activeCharts.push(chart);
+    }
+
+    function renderCharts(filtered) {
+      activeCharts.forEach(chart => chart.dispose());
+      activeCharts = [];
+
+      if (!window.echarts) {
+        document.querySelectorAll(".chart-box").forEach(el => {
+          el.innerHTML = "<div class='empty'>ECharts CDN could not load. Please check your internet connection.</div>";
+        });
+        return;
+      }
+
+      // Monthly additions
+      const monthlyMap = new Map();
+      filtered.forEach(d => {
+        if (d.date_added) {
+          const key = d.date_added.slice(0, 7);
+          increment(monthlyMap, key);
+        }
+      });
+
+      const monthlyEntries = Array.from(monthlyMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+      renderEChart("monthlyChart", {
+        tooltip: {
+          trigger: "axis"
+        },
+        grid: {
+          left: 10,
+          right: 20,
+          bottom: 35,
+          top: 25,
+          containLabel: true
+        },
+        xAxis: {
+          type: "category",
+          data: monthlyEntries.map(e => e[0]),
+          axisLabel: {
+            rotate: 45,
+            color: "#cfcfcf"
+          }
+        },
+        yAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        series: [
+          {
+            name: "Titles Added",
+            type: "line",
+            smooth: true,
+            symbolSize: 6,
+            data: monthlyEntries.map(e => e[1]),
+            lineStyle: {
+              width: 3,
+              color: "#E50914"
+            },
+            itemStyle: {
+              color: "#E50914"
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: "rgba(229,9,20,0.32)" },
+                { offset: 1, color: "rgba(229,9,20,0.03)" }
+              ])
+            }
+          }
+        ]
+      });
+
+      // Rating distribution
+      const ratingEntries = topScalar(filtered, "rating", 12);
+
+      renderEChart("ratingChart", {
+        tooltip: {
+          trigger: "item",
+          formatter: "{b}: {c} ({d}%)"
+        },
+        legend: {
+          bottom: 0,
+          textStyle: {
+            color: "#cfcfcf"
+          }
+        },
+        series: [
+          {
+            type: "pie",
+            radius: ["42%", "68%"],
+            center: ["50%", "44%"],
+            avoidLabelOverlap: true,
+            itemStyle: {
+              borderRadius: 7,
+              borderColor: "#111",
+              borderWidth: 2
+            },
+            label: {
+              color: "#ddd"
+            },
+            data: ratingEntries.map((entry, index) => ({
+              name: entry[0],
+              value: entry[1],
+              itemStyle: {
+                color: getColor(index)
+              }
+            }))
+          }
+        ]
+      });
+
+      // Release year by type
+      const releaseMap = new Map();
+
+      filtered.forEach(d => {
+        const year = d.release_year ?? "Unknown";
+
+        if (!releaseMap.has(year)) {
+          releaseMap.set(year, { Movie: 0, "TV Show": 0 });
+        }
+
+        const entry = releaseMap.get(year);
+        if (d.type === "Movie" || d.type === "TV Show") {
+          entry[d.type] += 1;
+        }
+      });
+
+      const releaseYears = Array.from(releaseMap.keys()).sort((a, b) => {
+        if (a === "Unknown") return 1;
+        if (b === "Unknown") return -1;
+        return Number(a) - Number(b);
+      });
+
+      renderEChart("releaseYearChart", {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow"
+          }
+        },
+        legend: {
+          textStyle: {
+            color: "#cfcfcf"
+          }
+        },
+        grid: {
+          left: 10,
+          right: 20,
+          bottom: 30,
+          top: 40,
+          containLabel: true
+        },
+        xAxis: {
+          type: "category",
+          data: releaseYears,
+          axisLabel: {
+            rotate: 45,
+            color: "#cfcfcf"
+          }
+        },
+        yAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        series: [
+          {
+            name: "Movie",
+            type: "bar",
+            stack: "total",
+            barWidth: "58%",
+            itemStyle: {
+              color: "#E50914",
+              borderRadius: [0, 0, 0, 0]
+            },
+            data: releaseYears.map(y => releaseMap.get(y).Movie)
+          },
+          {
+            name: "TV Show",
+            type: "bar",
+            stack: "total",
+            barWidth: "58%",
+            itemStyle: {
+              color: "#9aa0a6",
+              borderRadius: [0, 0, 0, 0]
+            },
+            data: releaseYears.map(y => releaseMap.get(y)["TV Show"])
+          }
+        ]
+      });
+
+      // Top genres
+      const genreEntries = topFlatten(filtered, "genres", 10);
+
+      renderEChart("genresChart", {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow"
+          }
+        },
+        grid: {
+          left: 10,
+          right: 25,
+          top: 15,
+          bottom: 20,
+          containLabel: true
+        },
+        xAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        yAxis: {
+          type: "category",
+          inverse: true,
+          data: genreEntries.map(e => e[0]),
+          axisLabel: {
+            color: "#ddd",
+            width: 120,
+            overflow: "truncate"
+          }
+        },
+        series: [
+          {
+            type: "bar",
+            data: genreEntries.map(e => e[1]),
+            barWidth: "62%",
+            itemStyle: {
+              borderRadius: [0, 7, 7, 0],
+              color: function (params) {
+                return getColor(params.dataIndex);
+              }
+            }
+          }
+        ]
+      });
+
+      // Top countries
+      const countryEntries = topFlatten(filtered, "countries", 10);
+
+      renderEChart("countriesChart", {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow"
+          }
+        },
+        grid: {
+          left: 10,
+          right: 25,
+          top: 15,
+          bottom: 20,
+          containLabel: true
+        },
+        xAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        yAxis: {
+          type: "category",
+          inverse: true,
+          data: countryEntries.map(e => e[0]),
+          axisLabel: {
+            color: "#ddd",
+            width: 120,
+            overflow: "truncate"
+          }
+        },
+        series: [
+          {
+            type: "bar",
+            data: countryEntries.map(e => e[1]),
+            barWidth: "62%",
+            itemStyle: {
+              borderRadius: [0, 7, 7, 0],
+              color: function (params) {
+                return getColor(params.dataIndex + 2);
+              }
+            }
+          }
+        ]
+      });
+
+      // Top directors
+      const directorEntries = topFlatten(filtered, "directors", 10);
+
+      renderEChart("directorsChart", {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow"
+          }
+        },
+        grid: {
+          left: 10,
+          right: 25,
+          top: 15,
+          bottom: 20,
+          containLabel: true
+        },
+        xAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        yAxis: {
+          type: "category",
+          inverse: true,
+          data: directorEntries.map(e => e[0]),
+          axisLabel: {
+            color: "#ddd",
+            width: 120,
+            overflow: "truncate"
+          }
+        },
+        series: [
+          {
+            type: "bar",
+            data: directorEntries.map(e => e[1]),
+            barWidth: "62%",
+            itemStyle: {
+              borderRadius: [0, 7, 7, 0],
+              color: function (params) {
+                return getColor(params.dataIndex + 4);
+              }
+            }
+          }
+        ]
+      });
+
+      // Genre mix by type
+      const genreTypeEntries = topFlatten(filtered, "genres", 8);
+      const genreLabels = genreTypeEntries.map(e => e[0]);
+
+      const genreMovieCounts = genreLabels.map(genre => {
+        return filtered.filter(d => d.type === "Movie" && (d.genres || []).includes(genre)).length;
+      });
+
+      const genreTVCounts = genreLabels.map(genre => {
+        return filtered.filter(d => d.type === "TV Show" && (d.genres || []).includes(genre)).length;
+      });
+
+      renderEChart("genreTypeChart", {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow"
+          }
+        },
+        legend: {
+          textStyle: {
+            color: "#cfccf"
+          }
+        },
+        grid: {
+          left: 10,
+          right: 25,
+          top: 35,
+          bottom: 20,
+          containLabel: true
+        },
+        xAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        yAxis: {
+          type: "category",
+          inverse: true,
+          data: genreLabels,
+          axisLabel: {
+            color: "#ddd",
+            width: 120,
+            overflow: "truncate"
+          }
+        },
+        series: [
+          {
+            name: "Movie",
+            type: "bar",
+            stack: "type",
+            data: genreMovieCounts,
+            barWidth: "58%",
+            itemStyle: {
+              color: "#E50914"
+            }
+          },
+          {
+            name: "TV Show",
+            type: "bar",
+            stack: "type",
+            data: genreTVCounts,
+            barWidth: "58%",
+            itemStyle: {
+              color: "#9aa0a6"
+            }
+          }
+        ]
+      });
+
+      // Heatmap
+      const heatmapEl = document.getElementById("heatmapChart");
+      const existingHeatmap = echarts.getInstanceByDom(heatmapEl);
+      if (existingHeatmap) existingHeatmap.dispose();
+
+      const topGenres = topFlatten(filtered, "genres", 8).map(e => e[0]);
+      const topRatings = topScalar(filtered, "rating", 7).map(e => e[0]);
+
+      if (!topGenres.length || !topRatings.length) {
+        heatmapEl.innerHTML = "<div class='empty'>No heatmap data available for the selected filters.</div>";
+      } else {
+        const countMap = new Map();
+        let maxHeatValue = 0;
+
+        topGenres.forEach(genre => {
+          topRatings.forEach(rating => {
+            countMap.set(`${genre}|${rating}`, 0);
+          });
+        });
+
+        filtered.forEach(row => {
+          const rating = row.rating || "Unknown";
+          if (!topRatings.includes(rating)) return;
+
+          (row.genres || []).forEach(genre => {
+            if (!topGenres.includes(genre)) return;
+
+            const key = `${genre}|${rating}`;
+            const next = (countMap.get(key) || 0) + 1;
+            countMap.set(key, next);
+
+            if (next > maxHeatValue) maxHeatValue = next;
+          });
+        });
+
+        const heatData = [];
+
+        topGenres.forEach((genre, yIndex) => {
+          topRatings.forEach((rating, xIndex) => {
+            heatData.push([
+              xIndex,
+              yIndex,
+              countMap.get(`${genre}|${rating}`) || 0
+            ]);
+          });
+        });
+
+        renderEChart("heatmapChart", {
+          tooltip: {
+            position: "top",
+            formatter: function (params) {
+              const genre = topGenres[params.value[1]];
+              const rating = topRatings[params.value[0]];
+              const value = params.value[2];
+              return `${genre}<br/>${rating}: <strong>${value}</strong>`;
+            }
+          },
+          grid: {
+            top: 15,
+            left: 10,
+            right: 20,
+            bottom: 85,
+            containLabel: true
+          },
+          xAxis: {
+            type: "category",
+            data: topRatings,
+            splitArea: {
+              show: true
+            },
+            axisLabel: {
+              interval: 0,
+              rotate: 30,
+              color: "#ddd"
+            }
+          },
+          yAxis: {
+            type: "category",
+            data: topGenres,
+            splitArea: {
+              show: true
+            },
+            axisLabel: {
+              color: "#ddd",
+              width: 110,
+              overflow: "truncate"
+            }
+          },
+          visualMap: {
+            min: 0,
+            max: maxHeatValue || 1,
+            calculable: true,
+            orient: "horizontal",
+            left: "center",
+            bottom: 0,
+            textStyle: {
+              color: "#ddd"
+            },
+            inRange: {
+              color: ["#33070a", "#771118", "#E50914"]
+            }
+          },
+          series: [
+            {
+              name: "Genre Rating Heatmap",
+              type: "heatmap",
+              data: heatData,
+              label: {
+                show: true,
+                color: "#fff",
+                fontSize: 10
+              },
+              emphasis: {
+                itemStyle: {
+                  shadowBlur: 12,
+                  shadowColor: "rgba(0,0,0,0.5)"
+                }
+              }
+            }
+          ]
+        });
+      }
+
+      // Movie runtime scatter
+      const movieScatterData = filtered
+        .filter(d => d.type === "Movie" && d.release_year && d.duration_minutes)
+        .map(d => [d.release_year, d.duration_minutes, d.title]);
+
+      renderEChart("scatterChart", {
+        tooltip: {
+          formatter: function (params) {
+            return `${params.data[2]}<br/>Year: ${params.data[0]}<br/>Runtime: ${params.data[1]} min`;
+          }
+        },
+        grid: {
+          left: 10,
+          right: 25,
+          top: 25,
+          bottom: 35,
+          containLabel: true
+        },
+        xAxis: {
+          type: "value",
+          name: "Release Year",
+          nameTextStyle: {
+            color: "#cfcfcf"
+          },
+          axisLabel: {
+            color: "#cfcfcf"
+          },
+          scale: true
+        },
+        yAxis: {
+          type: "value",
+          name: "Runtime (minutes)",
+          nameTextStyle: {
+            color: "#cfcfcf"
+          },
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        series: [
+          {
+            type: "scatter",
+            symbolSize: 9,
+            data: movieScatterData,
+            itemStyle: {
+              color: "rgba(229,9,20,0.75)"
+            }
+          }
+        ]
+      });
+
+      // TV show seasons distribution
+      const seasonMap = new Map();
+
+      filtered
+        .filter(d => d.type === "TV Show" && d.season_count)
+        .forEach(d => increment(seasonMap, d.season_count));
+
+      const seasonLabels = Array.from(seasonMap.keys()).sort((a, b) => Number(a) - Number(b));
+      const seasonValues = seasonLabels.map(season => seasonMap.get(season));
+
+      renderEChart("seasonsChart", {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow"
+          }
+        },
+        grid: {
+          left: 10,
+          right: 25,
+          top: 20,
+          bottom: 30,
+          containLabel: true
+        },
+        xAxis: {
+          type: "category",
+          data: seasonLabels.map(s => `${s} Season${Number(s) > 1 ? "s" : ""}`),
+          axisLabel: {
+            color: "#ddd"
+          }
+        },
+        yAxis: {
+          type: "value",
+          axisLabel: {
+            color: "#cfcfcf"
+          }
+        },
+        series: [
+          {
+            type: "bar",
+            data: seasonValues,
+            barWidth: "58%",
+            itemStyle: {
+              borderRadius: [7, 7, 0, 0],
+              color: function (params) {
+                return getColor(params.dataIndex + 6);
+              }
+            }
+          }
+        ]
+      });
+    }
+
+    /*************************************************************
+     * Table rendering
+     *************************************************************/
+    function renderTable(filtered) {
+      const tbody = document.getElementById("detailBody");
+      const tableCount = document.getElementById("tableCount");
+
+      const limited = filtered.slice(0, 80);
+
+      tableCount.textContent = `Showing ${limited.length.toLocaleString()} of ${filtered.length.toLocaleString()} filtered titles`;
+
+      tbody.innerHTML = limited.map(row => {
+        return `
+          <tr>
+            <td>${escapeHtml(row.show_id)}</td>
+            <td>${escapeHtml(row.title)}</td>
+            <td>${escapeHtml(row.type)}</td>
+            <td>${escapeHtml(row.release_year ?? "")}</td>
+            <td>${escapeHtml(row.rating ?? "")}</td>
+            <td>${escapeHtml(row.duration ?? "")}</td>
+            <td>${escapeHtml(row.date_added ?? "")}</td>
+            <td>${(row.genres || []).slice(0, 4).map(g => `<span class="badge">${escapeHtml(g)}</span>`).join("")}</td>
+            <td>${(row.countries || []).slice(0, 3).map(c => `<span class="badge">${escapeHtml(c)}</span>`).join("")}</td>
+            <td>${(row.directors || []).slice(0, 3).map(d => `<span class="badge">${escapeHtml(d)}</span>`).join("")}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    /*************************************************************
+     * Export filtered CSV
+     *************************************************************/
+    function exportCSV() {
+      const filtered = getFilteredData();
+
+      const headers = [
+        "show_id",
+        "type",
+        "title",
+        "release_year",
+        "rating",
+        "duration",
+        "duration_minutes",
+        "season_count",
+        "date_added",
+        "genres",
+        "countries",
+        "directors",
+        "cast"
+      ];
+
+      const rows = filtered.map(row => {
+        return [
+          row.show_id,
+          row.type,
+          row.title,
+          row.release_year,
+          row.rating,
+          row.duration,
+          row.duration_minutes,
+          row.season_count,
+          row.date_added,
+          (row.genres || []).join("|"),
+          (row.countries || []).join("|"),
+          (row.directors || []).join("|"),
+          (row.cast || []).join("|")
+        ].map(csvEscape).join(",");
+      });
+
+      const csv = [headers.join(","), ...rows].join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+
+      link.href = URL.createObjectURL(blob);
+      link.download = "netflix_filtered_dashboard_data.csv";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(link.href);
+    }
+
+    /*************************************************************
+     * Main render
+     *************************************************************/
+    function renderDashboard() {
+      const filtered = getFilteredData();
+
+      renderKPIs(filtered);
+      renderCharts(filtered);
+      renderTable(filtered);
+    }
+
+    /*************************************************************
+     * Events
+     *************************************************************/
+    function bindEvents() {
+      document.querySelectorAll(".filters select").forEach(select => {
+        select.addEventListener("change", event => {
+          const key = event.target.id.replace("Filter", "");
+          state[key] = event.target.value;
+          renderDashboard();
+        });
+      });
+
+      let searchTimer = null;
+
+      document.getElementById("searchFilter").addEventListener("input", event => {
+        clearTimeout(searchTimer);
+
+        searchTimer = setTimeout(() => {
+          state.search = event.target.value;
+          renderDashboard();
+        }, 250);
+      });
+
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        state.type = "All";
+        state.genre = "All";
+        state.country = "All";
+        state.rating = "All";
+        state.director = "All";
+        state.releaseYear = "All";
+        state.addedYear = "All";
+        state.search = "";
+
+        document.getElementById("searchFilter").value = "";
+
+        populateFilters();
+        renderDashboard();
+      });
+
+      document.getElementById("exportBtn").addEventListener("click", exportCSV);
+
+      window.addEventListener("resize", () => {
+        activeCharts.forEach(chart => chart.resize());
+      });
+    }
+
+    /*************************************************************
+     * Initialize dashboard
+     *************************************************************/
+    document.addEventListener("DOMContentLoaded", () => {
+      populateFilters();
+      bindEvents();
+      renderDashboard();
+    });
+  </script>
+</body>
+</html>
